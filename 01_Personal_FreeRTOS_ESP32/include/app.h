@@ -21,7 +21,7 @@ typedef struct {
   TickType_t tick;       // thời điểm đọc
 } LightData_t;
 
-extern LightData_t       g_light;        // Task 2 ghi, Task 6 + console đọc
+extern LightData_t       g_light;        // Task 2 ghi, Task 6 + Task 7 đọc
 extern SemaphoreHandle_t g_lightMutex;   // mutex bảo vệ g_light
 
 // ---------- LED2 / LED3 ----------
@@ -39,7 +39,10 @@ extern volatile bool g_dark;             // Task 8 ghi, Task 6 đọc
 
 // ---------- Đồng bộ / giao tiếp ----------
 extern SemaphoreHandle_t  g_btn2Sem;     // BINARY semaphore: Task 4 give -> Task 5 take
-extern QueueHandle_t      g_logQueue;    // log: mọi task -> Task 7 (gatekeeper của Serial)
+extern SemaphoreHandle_t  g_serialMutex; // RECURSIVE mutex: mọi task in Serial phải giữ nó
+extern QueueHandle_t      g_cmdQueue;    // dòng lệnh: callback UART RX -> Task 7
+extern SemaphoreHandle_t  g_statSem;     // BINARY semaphore: software timer -> Task 7
+extern QueueSetHandle_t   g_ctrlSet;     // QUEUE SET {g_cmdQueue, g_statSem}: Task 7 chờ cả hai
 extern EventGroupHandle_t g_events;      // đồng bộ khởi động + cờ trạng thái
 extern TimerHandle_t      g_statTimer;   // software timer auto-reload
 
@@ -56,7 +59,7 @@ extern TimerHandle_t      g_statTimer;   // software timer auto-reload
 #define EV_SENSOR_OK  (1u << 8)          // Task 2 đã có mẫu đầu tiên
 #define EV_OLED_OK    (1u << 9)          // OLED khởi tạo thành công
 
-// ---------- Handle task (console dùng để suspend/resume/prio) ----------
+// ---------- Handle task (Task 7 dùng để suspend/resume/prio) ----------
 enum { ID_T1 = 0, ID_T2, ID_T3, ID_T4, ID_T5, ID_T6, ID_T7, ID_T8, NUM_TASKS };   // T1..T8 đã bị Arduino dùng cho chân touch
 extern TaskHandle_t g_task[NUM_TASKS];
 extern const char  *const g_taskName[NUM_TASKS];
@@ -67,15 +70,15 @@ typedef struct {
   const char *name;
 } ButtonCfg_t;
 
-// Phần tử của queue log (copy theo giá trị vào queue)
+// Phần tử của queue lệnh (copy theo giá trị vào queue)
 typedef struct {
-  TickType_t tick;
-  char       text[LOG_TEXT_LEN];
-} LogItem_t;
-extern volatile uint32_t g_logDropped;   // số log bị bỏ do queue đầy
+  char text[CMD_LEN];
+} CmdLine_t;
+extern volatile uint32_t g_logDropped;   // số log bị bỏ do không lấy được mutex Serial kịp
 
 // ---------- Hàm ----------
-void app_log(const char *fmt, ...);      // gửi log vào queue, không block
+void app_log(const char *fmt, ...);      // in 1 dòng log dưới g_serialMutex (chờ tối đa LOG_WAIT_MS)
+void serial_begin_rx();                  // gắn callback nhận lệnh UART -> g_cmdQueue
 void app_sync_start(EventBits_t myBit);  // điểm hẹn khởi động (xEventGroupSync)
 
 void task1_led1(void *pv);
@@ -84,6 +87,6 @@ void task3_btn1(void *pv);
 void task4_btn2(void *pv);
 void task5_led3(void *pv);
 void task6_oled(void *pv);
-void task7_console(void *pv);
+void task7_control(void *pv);
 void task8_alarm(void *pv);
 void stat_timer_cb(TimerHandle_t t);

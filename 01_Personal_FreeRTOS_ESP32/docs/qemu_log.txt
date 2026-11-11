@@ -1,42 +1,57 @@
 === RTOS project - Dang Dinh Manh 24119055 - FreeRTOS on ESP32 ===
 [BOOT] FreeRTOS V10.5.1, tick 1000 Hz, 2 core
 [BOOT] Tao 8 task + 1 software timer. Go 'help' trong Serial Monitor de xem lenh.
-[T7] 8 task da qua diem hen (xEventGroupSync), bat dau chay.
+[BOOT] Tu day moi lan in Serial deu phai giu g_serialMutex (app_log).
 [    628] T6 khong thay OLED (SDA=21 SCL=22), se thu lai moi 5s
-give sem tu console: OK
-[   1528] T5 nhan sem -> LED3 ON 3s (lan 1)
-give sem tu console: OK
-give sem tu console: da co token
-[   4528] T5 LED3 OFF, doi semaphore tiep
-[   4528] T5 nhan sem -> LED3 ON 3s (lan 2)
-[   7528] T5 LED3 OFF, doi semaphore tiep
+[    628] T7 8 task da qua diem hen (xEventGroupSync), bat dau chay
+Lenh:  help | stat | light | give
+       s <1..8>    suspend task (vd: s 1 -> LED1 dung nhay)
+       r <1..8>    resume task
+       p <1..8> <prio>  doi priority (0..24)
+ID  Ten          Trang thai  Prio  Stack con(byte)  Core
+1   T1_led1      Blocked     2     2484             1
+2   T2_sensor    Blocked     2     2476             0
+3   T3_btn1      Blocked     3     2500             1
+4   T4_btn2      Blocked     3     2492             1
+5   T5_led3      Blocked     4     2496             1
+6   T6_oled      Blocked     1     2472             0
+7   T7_control   Running     2     2428             0
+8   T8_alarm     Blocked     3     2484             0
+[   1145] heap 239624 B, thap nhat 231444 B, log bo 0
+[   2737] give sem tu lenh: OK
+[   2737] T5 nhan sem -> LED3 ON 3s (lan 1)
+[   2978] give sem tu lenh: OK
+[   3222] give sem tu lenh: da co token
+[   5737] T5 LED3 OFF, doi semaphore tiep
+[   5737] T5 nhan sem -> LED3 ON 3s (lan 2)
 [   7628] T8 CANH BAO: TOI (anh sang 22%)
-g_light: raw=3663  2772mV  11%  lan doc=17  tick=8628  toi=1
-Da suspend T1_led1
+[   8737] T5 LED3 OFF, doi semaphore tiep
+[  10475] g_light: raw=4095 3100mV 0% lan=20 toi=1
+[  10627] [STAT] up 10s heap 239624 min 231444 drop 0
+[  11268] Da suspend T1_led1
 ID  Ten          Trang thai  Prio  Stack con(byte)  Core
-1   T1_led1      Suspend     2     2488             1
-2   T2_sensor    Blocked     2     2484             0
-3   T3_btn1      Blocked     3     2496             1
+1   T1_led1      Suspend     2     2484             1
+2   T2_sensor    Blocked     2     2476             0
+3   T3_btn1      Blocked     3     2500             1
 4   T4_btn2      Blocked     3     2492             1
-5   T5_led3      Blocked     4     1684             1
-6   T6_oled      Blocked     1     2680             0
-7   T7_console   Running     1     2492             0
-8   T8_alarm     Blocked     3     1672             0
-Heap trong: 241628 byte, thap nhat tu luc chay: 233368 byte, log bi bo: 0
-[  10627] [STAT] up 10s heap 241628 min 233368 drop 0
-Da resume T1_led1
-T6_oled prio -> 2
-Khong suspend chinh Task 7 (se mat console)
-Lenh khong hop le: 'xyz' (go help)
+5   T5_led3      Blocked     4     1476             1
+6   T6_oled      Blocked     1     2472             0
+7   T7_control   Running     2     2428             0
+8   T8_alarm     Blocked     3     1464             0
+[  12067] heap 239624 B, thap nhat 231444 B, log bo 0
+[  12883] Da resume T1_led1
 [  13628] T8 het toi, binh thuong (anh sang 37%)
+[  13692] T6_oled prio -> 2
+[  14504] Khong suspend chinh Task 7 (se mat lenh)
+[  14905] Lenh khong hop le: 'xyz' (go help)
 ID  Ten          Trang thai  Prio  Stack con(byte)  Core
-1   T1_led1      Blocked     2     2488             1
-2   T2_sensor    Blocked     2     2484             0
-3   T3_btn1      Blocked     3     2496             1
+1   T1_led1      Blocked     2     2484             1
+2   T2_sensor    Blocked     2     2476             0
+3   T3_btn1      Blocked     3     2500             1
 4   T4_btn2      Blocked     3     2492             1
-5   T5_led3      Blocked     4     1684             1
-6   T6_oled      Blocked     2     2680             0
-7   T7_console   Running     1     2492             0
-8   T8_alarm     Blocked     3     1672             0
-Heap trong: 241628 byte, thap nhat tu luc chay: 233368 byte, log bi bo: 0
-[  20627] [STAT] up 20s heap 241628 min 233368 drop 0
+5   T5_led3      Blocked     4     1476             1
+6   T6_oled      Blocked     2     2472             0
+7   T7_control   Running     2     2428             0
+8   T8_alarm     Blocked     3     1464             0
+[  15714] heap 239624 B, thap nhat 231444 B, log bo 0
+[  20627] [STAT] up 20s heap 239624 min 231444 drop 0

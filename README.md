@@ -12,8 +12,8 @@
 
 ```
 RTOS_Project/
-├── 01_Personal_FreeRTOS_ESP32/   PlatformIO: 8 task + 1 software timer, 14 kỹ thuật FreeRTOS
-│   ├── src/                      main.cpp, task_io.cpp, task_sensor.cpp, task_display.cpp, task_console.cpp
+├── 01_Personal_FreeRTOS_ESP32/   PlatformIO: 8 task + 1 software timer, 16 kỹ thuật FreeRTOS
+│   ├── src/                      main.cpp, task_io.cpp, task_sensor.cpp, task_display.cpp, task_control.cpp
 │   ├── include/                  config.h (chân, chu kỳ, priority, stack), app.h (đối tượng dùng chung)
 │   ├── docs/                     hình cho report, log chạy QEMU, script vẽ hình
 │   ├── prebuilt/                 firmware ESP32-S3 nạp sẵn ở địa chỉ 0x0
@@ -32,5 +32,5 @@ RTOS_Project/
 | Hạng mục | Trạng thái | Cách kiểm tra |
 |---|---|---|
 | Build ESP32-S3 / ESP32 | OK, không cảnh báo (`-Wall`). RAM 6,9 %, Flash 12,4 % (S3) | `pio run -e esp32s3` |
-| Chạy giả lập QEMU (ESP32) | OK: 8 task qua điểm hẹn, LED3 sáng đúng 3000 ms, semaphore gộp lần nhấn, báo tối 25/35 %, suspend/resume/prio, drop 0 | `docs/qemu_log.txt` |
+| Chạy giả lập QEMU (ESP32) | OK: 8 task qua điểm hẹn, LED3 sáng đúng 3000 ms, semaphore gộp lần nhấn, báo tối 25/35 %, queue set (lệnh + timer), suspend/resume/prio, log bỏ = 0 | `docs/qemu_log.txt` |
 | Chạy trên kit thật | Chờ chạy: điền cột "Kết quả" Bảng 6 trong report | xem `01_.../README.md` |

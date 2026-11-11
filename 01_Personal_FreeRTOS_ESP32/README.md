@@ -26,11 +26,11 @@ Kit + testboard dùng chung với nhóm (GV cho phép) nên chân giống mạch
 | T4 btn2 | 1 | 3 | quét 10 ms | xSemaphoreGive (binary) |
 | T5 led3 | 1 | 4 | chờ semaphore | xSemaphoreTake, critical section |
 | T6 oled | 0 | 1 | 500 ms | mutex, critical section, xEventGroupWaitBits |
-| T7 console | 0 | 1 | chờ queue | queue + gatekeeper, suspend/resume/prio, stack monitor |
+| T7 control | 0 | 2 | chờ queue set | queue lệnh + queue set, suspend/resume/prio, stack monitor |
 | T8 alarm | 0 | 3 | chờ notification | xTaskNotifyWait |
-| timer | daemon | – | 10 s | software timer auto-reload |
+| timer | daemon | – | 10 s | software timer → give semaphore cho Task 7 |
 
-Mọi task gọi `xEventGroupSync` ở đầu nên cùng xuất phát. Mỗi kỹ thuật đánh dấu `[K1]`..`[K14]` trong code, bảng tra ở đầu `src/main.cpp`.
+Mọi task gọi `xEventGroupSync` ở đầu nên cùng xuất phát. Log: mỗi task tự in, Serial được bảo vệ bằng recursive mutex `g_serialMutex`. Mỗi kỹ thuật đánh dấu `[K1]`..`[K14]` trong code, bảng tra ở đầu `src/main.cpp`.
 
 ## Chạy
 
@@ -54,7 +54,7 @@ esptool.py --chip esp32 merge-bin -o flash.bin --fill-flash-size 4MB 0x1000 boot
 qemu-system-xtensa -machine esp32 -icount 3 -display none -serial stdio -drive file=flash.bin,if=mtd,format=raw
 ```
 
-Kết quả: [`docs/qemu_log.txt`](docs/qemu_log.txt). LED3 sáng đúng 3000 ms; 3 lần `give` liên tiếp cho 2 lượt sáng (binary semaphore giữ tối đa 1 token); báo tối ở 22 %, hết tối ở 37 %; không log nào bị bỏ.
+Kết quả: [`docs/qemu_log.txt`](docs/qemu_log.txt). LED3 sáng đúng 3000 ms; 3 lần `give` liên tiếp cho 2 lượt sáng (binary semaphore giữ tối đa 1 token); báo tối ở 22 %, hết tối ở 37 %; thống kê in đúng mỗi 10 s qua queue set; không log nào bị bỏ.
 
 ## Kiểm thử trên kit (điền khi chạy)
 
@@ -66,4 +66,4 @@ Kết quả: [`docs/qemu_log.txt`](docs/qemu_log.txt). LED3 sáng đúng 3000 ms
 | 4 | Nhấn BTN2 3 lần nhanh | LED3 sáng 2 lượt; log "da co token" | |
 | 5 | Che quang trở | % giảm; dưới 25 % OLED hiện [TOI] | |
 | 6 | `s 1` rồi `r 1` | LED1 dừng rồi nháy lại | |
-| 7 | `stat` sau 10 phút | stack còn dư, `drop 0` | |
+| 7 | `stat` sau 10 phút | stack còn dư, log bỏ = 0 | |

@@ -19,12 +19,13 @@
  *   [K4]  vTaskDelay: nhường CPU (Blocked) ...................... task3, task4, task5
  *   [K5]  Binary semaphore: đồng bộ task-task ................... task4 give -> task5 take
  *   [K6]  Mutex: bảo vệ biến toàn cục g_light ................... task2 ghi, task6/task7 đọc
+ *   [K6b] Recursive mutex bảo vệ Serial (kế thừa ưu tiên) ....... app_log(), print_stat()
  *   [K7]  Critical section (spinlock 2 lõi) ..................... task5 ghi g_led3, task6 đọc
- *   [K8]  Queue + gatekeeper task: chỉ Task 7 dùng Serial ....... app_log() -> task7
+ *   [K8]  Queue lệnh + queue set: Task 7 chờ 2 nguồn cùng lúc ... on_uart_rx() -> task7_control()
  *   [K9]  Event group: xEventGroupSync (điểm hẹn) + cờ trạng thái app_sync_start(), task6
  *   [K10] Task notification làm "mailbox" 1 giá trị ............. task2 -> task8
- *   [K11] Software timer auto-reload (timer daemon task) ........ stat_timer_cb()
- *   [K12] Điều khiển task lúc chạy: suspend/resume/prio ......... task7 lệnh console
+ *   [K11] Software timer auto-reload -> give semaphore .......... stat_timer_cb() -> task7
+ *   [K12] Điều khiển task lúc chạy: suspend/resume/prio ......... task7 lệnh s/r/p
  *   [K13] Giám sát: stack high-water mark, heap, trạng thái task  task7 lệnh "stat"
  *   [K14] vTaskDelete(NULL): xoá loopTask của Arduino ........... loop()
  */
@@ -39,14 +40,17 @@ Led3State_t   g_led3   = {false, 0, 0};
 portMUX_TYPE  g_led3Lock = portMUX_INITIALIZER_UNLOCKED;
 volatile bool g_dark   = false;
 
-SemaphoreHandle_t  g_btn2Sem   = nullptr;
-QueueHandle_t      g_logQueue  = nullptr;
+SemaphoreHandle_t  g_btn2Sem     = nullptr;
+SemaphoreHandle_t  g_serialMutex = nullptr;
+QueueHandle_t      g_cmdQueue    = nullptr;
+SemaphoreHandle_t  g_statSem     = nullptr;
+QueueSetHandle_t   g_ctrlSet     = nullptr;
 EventGroupHandle_t g_events    = nullptr;
 TimerHandle_t      g_statTimer = nullptr;
 
 TaskHandle_t g_task[NUM_TASKS] = {nullptr};
 const char *const g_taskName[NUM_TASKS] = {
-  "T1_led1", "T2_sensor", "T3_btn1", "T4_btn2", "T5_led3", "T6_oled", "T7_console", "T8_alarm"
+  "T1_led1", "T2_sensor", "T3_btn1", "T4_btn2", "T5_led3", "T6_oled", "T7_control", "T8_alarm"
 };
 
 // Tham số cho các task (static: phải còn sống suốt đời task, KHÔNG dùng biến cục bộ của setup) [K2]
@@ -91,18 +95,29 @@ void setup() {
   // Tạo đối tượng kernel TRƯỚC khi tạo task dùng chúng
   g_btn2Sem    = xSemaphoreCreateBinary();                          // [K5] tạo ra ở trạng thái rỗng (0)
   g_lightMutex = xSemaphoreCreateMutex();                           // [K6] có priority inheritance
-  g_logQueue   = xQueueCreate(LOG_QUEUE_LEN, sizeof(LogItem_t));    // [K8]
+  g_serialMutex = xSemaphoreCreateRecursiveMutex();                // [K6b]
+  g_cmdQueue   = xQueueCreate(CMD_QUEUE_LEN, sizeof(CmdLine_t));    // [K8] copy theo giá trị
+  g_statSem    = xSemaphoreCreateBinary();
+  // Queue set phải đủ chỗ cho tổng số phần tử của các thành viên: 4 dòng lệnh + 1 token semaphore.
+  // Thành viên phải đang RỖNG khi thêm vào set.
+  g_ctrlSet    = xQueueCreateSet(CMD_QUEUE_LEN + 1);
+  if (g_ctrlSet) {
+    xQueueAddToSet(g_cmdQueue, g_ctrlSet);
+    xQueueAddToSet(g_statSem, g_ctrlSet);
+  }
   g_events     = xEventGroupCreate();                               // [K9]
   g_statTimer  = xTimerCreate("stat", pdMS_TO_TICKS(STAT_TIMER_MS), pdTRUE, nullptr, stat_timer_cb);  // [K11]
 
-  if (!g_btn2Sem || !g_lightMutex || !g_logQueue || !g_events || !g_statTimer) {
+  if (!g_btn2Sem || !g_lightMutex || !g_serialMutex || !g_cmdQueue || !g_statSem || !g_ctrlSet ||
+      !g_events || !g_statTimer) {
     Serial.println("[BOOT] LOI: khong du heap de tao doi tuong kernel");
     for (;;) delay(1000);
   }
 
-  // In trước khi tạo task: sau khi task chạy, chỉ Task 7 được dùng Serial (tránh lẫn chữ)
   Serial.println("[BOOT] Tao 8 task + 1 software timer. Go 'help' trong Serial Monitor de xem lenh.");
+  Serial.println("[BOOT] Tu day moi lan in Serial deu phai giu g_serialMutex (app_log).");
   Serial.flush();
+  serial_begin_rx();
 
   // Tạo task [K1] + truyền tham số [K2]
   //           hàm            id   stack        tham số                                    priority          core
@@ -112,7 +127,7 @@ void setup() {
   create_task(task4_btn2,    ID_T4, STK_SMALL,   (void *)&s_btn2Cfg,                         PRIO_T4_BTN2,    CORE_IO);
   create_task(task5_led3,    ID_T5, STK_SMALL,   nullptr,                                    PRIO_T5_LED3,    CORE_IO);
   create_task(task6_oled,    ID_T6, STK_OLED,    nullptr,                                    PRIO_T6_OLED,    CORE_BG);
-  create_task(task7_console, ID_T7, STK_CONSOLE, nullptr,                                    PRIO_T7_CONSOLE, CORE_BG);
+  create_task(task7_control, ID_T7, STK_CONTROL, nullptr,                                    PRIO_T7_CONTROL, CORE_BG);
   create_task(task8_alarm,   ID_T8, STK_SMALL,   nullptr,                                    PRIO_T8_ALARM,   CORE_BG);
 
   xTimerStart(g_statTimer, 0);

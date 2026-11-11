@@ -57,19 +57,21 @@
 #define PRIO_T4_BTN2      3
 #define PRIO_T5_LED3      4   // phản hồi semaphore nhanh nhất
 #define PRIO_T6_OLED      1
-#define PRIO_T7_CONSOLE   1
+#define PRIO_T7_CONTROL   2   // lệnh người dùng: phản hồi nhanh hơn OLED
 #define PRIO_T8_ALARM     3
 
 // ============ Stack (đơn vị BYTE trên ESP-IDF) ============
 #define STK_SMALL      3072   // 2048 chỉ còn ~650 byte dư ở T5/T8 (đo bằng lệnh stat) -> tăng lên
 #define STK_SENSOR     3072
 #define STK_OLED       4096
-#define STK_CONSOLE    4096
+#define STK_CONTROL    4096
 
 // ============ Core (ESP32 2 lõi) ============
 #define CORE_IO   1   // LED, nút: cần đáp ứng nhanh
-#define CORE_BG   0   // cảm biến, OLED, console: tác vụ nền
+#define CORE_BG   0   // cảm biến, OLED, điều khiển: tác vụ nền
 
-// ============ Hàng đợi log ============
-#define LOG_QUEUE_LEN    16
-#define LOG_TEXT_LEN     64
+// ============ Log + lệnh ============
+#define LOG_TEXT_LEN     64   // độ dài tối đa 1 dòng log
+#define LOG_WAIT_MS      10   // chờ mutex Serial tối đa; quá thì bỏ dòng log, task không bị treo
+#define CMD_QUEUE_LEN     4   // số dòng lệnh chờ xử lý
+#define CMD_LEN          32

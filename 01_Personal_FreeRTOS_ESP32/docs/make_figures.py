@@ -77,8 +77,8 @@ def fig_software():
     task("t2", 7.9, 5.6, "T2 sensor · prio 2\nADC 500 ms → g_light", ORANGE)
     task("t8", 7.9, 4.3, "T8 alarm · prio 3\nchờ notification", ORANGE)
     task("t6", 7.9, 3.0, "T6 oled · prio 1\nvẽ OLED 500 ms", ORANGE)
-    task("t7", 7.9, 1.7, "T7 console · prio 1\nin log + nhận lệnh", ORANGE)
-    box(ax, 7.9, 0.45, 3.6, 0.85, "Timer daemon\nsoftware timer 10 s", "white", INK2, fs=8.5)
+    task("t7", 7.9, 1.7, "T7 control · prio 2\nqueue set: lệnh + timer", ORANGE)
+    box(ax, 7.9, 0.45, 3.6, 0.85, "Timer daemon · 10 s\ngive g_statSem", "white", INK2, fs=8.5)
 
     # đối tượng kernel ở giữa
     def obj(x, y, text, c):
@@ -87,7 +87,7 @@ def fig_software():
     obj(4.7, 4.35, "Event group\nđiểm hẹn 8 task", YELLOW)
     obj(4.7, 3.05, "Binary sem\ng_btn2Sem", GREEN)
     obj(4.7, 1.75, "Spinlock\ng_led3Lock", MAG)
-    obj(4.7, 0.45, "Queue log (16)\n← mọi task app_log()", VIOLET)
+    obj(4.7, 0.45, "Queue set\nqueue lệnh + g_statSem", VIOLET)
 
     arrow(ax, (7.9, 6.02), (7.3, 6.02), RED, "ghi")
     arrow(ax, (7.3, 5.75), (7.9, 3.6), RED)
@@ -99,10 +99,11 @@ def fig_software():
     arrow(ax, (7.3, 2.3), (7.9, 3.05), MAG)
     ax.text(7.5, 2.75, "đọc", fontsize=8, color=INK2)
     arrow(ax, (7.3, 0.85), (7.9, 1.85), VIOLET)
-    ax.text(7.45, 1.45, "nhận", fontsize=8, color=INK2)
+    ax.text(7.45, 1.45, "chờ", fontsize=8, color=INK2)
+    arrow(ax, (7.9, 0.75), (7.3, 0.75), INK2)
+    ax.text(0.4, 0.45, "UART RX → queue lệnh → set\nSerial: recursive mutex,\nmọi task tự in", fontsize=8, color=INK2)
     arrow(ax, (9.7, 5.6), (9.7, 5.15), ORANGE)
     ax.text(9.85, 5.33, "xTaskNotify", fontsize=8, color=INK2)
-    arrow(ax, (9.7, 1.3), (9.7, 1.7), INK2)
     ax.set_title("Hình 2. Kiến trúc phần mềm: 8 task, 2 lõi và đối tượng đồng bộ", fontsize=12, pad=4)
     fig.savefig(os.path.join(OUT, "f2_software.png"), dpi=170, bbox_inches="tight"); plt.close(fig)
 
@@ -163,9 +164,9 @@ def fig_timeline():
 
 # ---------------- Hình 5: stack còn dư ----------------
 def fig_stack():
-    names = ["T1_led1", "T2_sensor", "T3_btn1", "T4_btn2", "T5_led3", "T6_oled", "T7_console", "T8_alarm"]
+    names = ["T1_led1", "T2_sensor", "T3_btn1", "T4_btn2", "T5_led3", "T6_oled", "T7_control", "T8_alarm"]
     size = [3072, 3072, 3072, 3072, 3072, 4096, 4096, 3072]
-    free = [2488, 2484, 2496, 2492, 1684, 2680, 2492, 1672]
+    free = [2484, 2476, 2500, 2492, 1476, 2472, 2428, 1464]
     used = [s - f for s, f in zip(size, free)]
     fig, ax = plt.subplots(figsize=(8, 3.6))
     y = range(len(names))[::-1]
