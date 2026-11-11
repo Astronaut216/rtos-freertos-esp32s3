@@ -9,12 +9,12 @@ Báo cáo: [`../03_Reports/Report_Project_CaNhan_FreeRTOS_24119055.pdf`](../03_R
 
 | Linh kiện | ESP32-S3 | ESP32 thường (env esp32dev) |
 |---|---|---|
-| LED1 / LED2 / LED3 (+220 Ω) | GPIO12 / 13 / 14 | GPIO19 / 18 / 5 |
-| BTN1 / BTN2 (nối GND, pull-up trong) | GPIO16 / 17 | GPIO4 / 13 |
-| Module quang trở (AO) | GPIO2 (ADC1_CH1) | GPIO35 |
-| OLED SSD1306 I2C 0x3C | SDA 41, SCL 42 | SDA 21, SCL 22 |
+| LED1 / LED2 / LED3 (+220 Ω) | GPIO4 / 5 / 6 | GPIO19 / 18 / 5 |
+| BTN1 / BTN2 (nối GND, pull-up trong) | GPIO15 / 16 | GPIO4 / 13 |
+| Module cảm biến ánh sáng (AO) | GPIO1 (ADC1_CH0) | GPIO35 |
+| OLED SSD1306 I2C 0x3C | SDA 10, SCL 11 | SDA 21, SCL 22 |
 
-Đổi chân trong `include/config.h`. Mạch chia áp quang trở tự ráp (LDR lên 3V3) thì đặt `LDR_INVERT 0`.
+Kit + testboard dùng chung với nhóm (GV cho phép) nên chân giống mạch hiện có, nạp vào là chạy. Đổi chân trong `include/config.h`. Mạch chia áp quang trở tự ráp (LDR lên 3V3) thì đặt `LDR_INVERT 0`.
 
 ## Task
 

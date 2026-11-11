@@ -6,15 +6,16 @@
 
 // ============ Chân kết nối ============
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
-// ESP32-S3 DevKitC-1. Tránh: 0/3/45/46 (strapping), 19/20 (USB), 26..37 (flash/PSRAM), 43/44 (UART0)
-#define PIN_LED1       12   // Task 1 - nháy 200 ms
-#define PIN_LED2       13   // Task 3 - BTN1 đảo trạng thái
-#define PIN_LED3       14   // Task 5 - sáng 3 s khi nhận semaphore
-#define PIN_BTN1       16   // nút nối GND, INPUT_PULLUP
-#define PIN_BTN2       17
-#define PIN_LDR         2   // AO module quang trở -> ADC1_CH1
-#define PIN_I2C_SDA    41   // OLED SSD1306. Không dùng GPIO8: có kit S3 bị kéo GPIO8 xuống GND
-#define PIN_I2C_SCL    42
+// ESP32-S3 DevKitC-1 - dùng chung mạch testboard với nhóm (cùng chân với bài Lê Ngọc Hoàn).
+// Tránh: 0/3/45/46 (strapping), 19/20 (USB), 26..37 (flash/PSRAM), 43/44 (UART0)
+#define PIN_LED1        4   // Task 1 - nháy 200 ms
+#define PIN_LED2        5   // Task 3 - BTN1 đảo trạng thái
+#define PIN_LED3        6   // Task 5 - sáng 3 s khi nhận semaphore
+#define PIN_BTN1       15   // nút nối GND, INPUT_PULLUP
+#define PIN_BTN2       16
+#define PIN_LDR         1   // AO module cảm biến -> ADC1_CH0
+#define PIN_I2C_SDA    10   // OLED SSD1306. Không dùng GPIO8: trên kit này GPIO8 bị kéo xuống GND
+#define PIN_I2C_SCL    11
 #else
 // ESP32 DevKit thường (WROOM-32)
 #define PIN_LED1       19

@@ -38,20 +38,20 @@ def fig_hardware():
     ax.set_xlim(0, 10); ax.set_ylim(0, 6); ax.axis("off")
     box(ax, 3.6, 1.3, 2.8, 3.4, "ESP32-S3\nDevKitC-1\n\n2 lõi Xtensa LX7\n240 MHz\nFreeRTOS (ESP-IDF 5.5)",
         "#eaf2fc", BLUE, fs=10, bold=False)
-    left = [("LED1 (đỏ) + 220Ω", "GPIO12", 4.9), ("LED2 (xanh) + 220Ω", "GPIO13", 4.0),
-            ("LED3 (vàng) + 220Ω", "GPIO14", 3.1)]
+    left = [("LED1 (đỏ) + 220Ω", "GPIO4", 4.9), ("LED2 (xanh) + 220Ω", "GPIO5", 4.0),
+            ("LED3 (vàng) + 220Ω", "GPIO6", 3.1)]
     for name, pin, y in left:
         box(ax, 0.2, y - 0.3, 2.3, 0.6, name, "#fff4e5", YELLOW, fs=9)
         arrow(ax, (3.6, y), (2.5, y), ORANGE, pin)
-    for name, pin, y in [("BTN1 → GND", "GPIO16 (pull-up)", 2.2), ("BTN2 → GND", "GPIO17 (pull-up)", 1.3)]:
+    for name, pin, y in [("BTN1 → GND", "GPIO15 (pull-up)", 2.2), ("BTN2 → GND", "GPIO16 (pull-up)", 1.3)]:
         box(ax, 0.2, y - 0.3, 2.3, 0.6, name, "#e9f7f1", AQUA, fs=9)
         arrow(ax, (2.5, y), (3.6, y), AQUA, pin)
     box(ax, 7.5, 3.9, 2.3, 0.8, "Module quang trở\n(AO)", "#f1eefc", VIOLET, fs=9)
     arrow(ax, (7.5, 4.3), (6.4, 4.3), VIOLET)
-    ax.text(6.95, 3.95, "GPIO2 / ADC1", ha="center", fontsize=8, color=INK2)
+    ax.text(6.95, 3.95, "GPIO1 / ADC1", ha="center", fontsize=8, color=INK2)
     box(ax, 7.5, 1.6, 2.3, 1.0, "OLED SSD1306\n128×64, I2C 0x3C", "#f1eefc", VIOLET, fs=9)
-    arrow(ax, (6.4, 2.25), (7.5, 2.25), VIOLET, "SDA GPIO41")
-    arrow(ax, (6.4, 1.8), (7.5, 1.8), VIOLET, "SCL GPIO42")
+    arrow(ax, (6.4, 2.25), (7.5, 2.25), VIOLET, "SDA GPIO10")
+    arrow(ax, (6.4, 1.8), (7.5, 1.8), VIOLET, "SCL GPIO11")
     box(ax, 3.4, 0.1, 3.2, 0.6, "USB-UART → PC (Serial 115200)", "#f3f3f1", INK2, fs=9)
     ax.plot([5, 5], [0.7, 1.3], color=INK2, lw=1.3)
     ax.set_title("Hình 1. Sơ đồ kết nối phần cứng", fontsize=12, color=INK, pad=4)
