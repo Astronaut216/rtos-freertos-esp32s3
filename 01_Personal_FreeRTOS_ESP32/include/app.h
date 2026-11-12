@@ -14,15 +14,18 @@
 
 // ---------- Biến toàn cục của cảm biến (đề: "lưu vào biến toàn cục") ----------
 typedef struct {
-  uint16_t   raw;        // ADC 12 bit (trung bình ADC_SAMPLES mẫu)
-  uint32_t   mv;         // điện áp AO (mV)
-  uint8_t    lightPct;   // 0..100 %, 100 = sáng nhất
-  uint32_t   count;      // số lần đã đọc
+  bool       ok;         // lần đọc gần nhất thành công?
+  uint16_t   raw;        // giá trị thô 16 bit của BH1750
+  float      lux;        // cường độ sáng (lx) = raw / 1.2
+  uint8_t    barPct;     // 0..100 %, cho thanh mức trên OLED (đầy ở LUX_BAR_MAX)
+  uint32_t   count;      // số lần đọc thành công
+  uint32_t   errors;     // số lần đọc lỗi (mất dây, không thấy cảm biến)
   TickType_t tick;       // thời điểm đọc
 } LightData_t;
 
 extern LightData_t       g_light;        // Task 2 ghi, Task 6 + Task 7 đọc
 extern SemaphoreHandle_t g_lightMutex;   // mutex bảo vệ g_light
+extern SemaphoreHandle_t g_i2cMutex;     // mutex bảo vệ bus I2C: Task 2 (BH1750) + Task 6 (OLED)
 
 // ---------- LED2 / LED3 ----------
 extern volatile bool g_led2On;           // chỉ Task 3 ghi (bool = 1 byte, đọc/ghi nguyên tử)

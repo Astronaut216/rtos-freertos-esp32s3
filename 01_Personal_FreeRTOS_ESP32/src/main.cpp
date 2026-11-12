@@ -6,7 +6,7 @@
  *
  * Bảng tra yêu cầu đề -> code (minh chứng cho report):
  *   Task 1 LED1 nháy T=200ms ........................ task_io.cpp      task1_led1()
- *   Task 2 đọc cảm biến 500ms, lưu biến toàn cục .... task_sensor.cpp  task2_sensor()   -> g_light
+ *   Task 2 đọc BH1750 (lx) 500ms, lưu biến toàn cục . task_sensor.cpp  task2_sensor()   -> g_light
  *   Task 3 BTN1 đảo LED2 (vòng lặp quét) ............ task_io.cpp      task3_btn1()
  *   Task 4 BTN2 cấp binary semaphore ................ task_io.cpp      task4_btn2()     -> g_btn2Sem
  *   Task 5 chờ semaphore, LED3 sáng 3s rồi tắt ...... task_io.cpp      task5_led3()
@@ -20,6 +20,7 @@
  *   [K5]  Binary semaphore: đồng bộ task-task ................... task4 give -> task5 take
  *   [K6]  Mutex: bảo vệ biến toàn cục g_light ................... task2 ghi, task6/task7 đọc
  *   [K6b] Recursive mutex bảo vệ Serial (kế thừa ưu tiên) ....... app_log(), print_stat()
+ *   [K6c] Mutex bảo vệ bus I2C chung (BH1750 + OLED) ............ task2 read_light(), task6 display()
  *   [K7]  Critical section (spinlock 2 lõi) ..................... task5 ghi g_led3, task6 đọc
  *   [K8]  Queue lệnh + queue set: Task 7 chờ 2 nguồn cùng lúc ... on_uart_rx() -> task7_control()
  *   [K9]  Event group: xEventGroupSync (điểm hẹn) + cờ trạng thái app_sync_start(), task6
@@ -30,10 +31,13 @@
  *   [K14] vTaskDelete(NULL): xoá loopTask của Arduino ........... loop()
  */
 #include "app.h"
+#include <Wire.h>
+#include <esp_log.h>
 
 // ================== Định nghĩa đối tượng dùng chung ==================
-LightData_t       g_light      = {0, 0, 0, 0, 0};
+LightData_t       g_light      = {};
 SemaphoreHandle_t g_lightMutex = nullptr;
+SemaphoreHandle_t g_i2cMutex   = nullptr;
 
 volatile bool g_led2On = false;
 Led3State_t   g_led3   = {false, 0, 0};
@@ -89,12 +93,19 @@ void setup() {
   digitalWrite(PIN_LED3, LOW);
   pinMode(PIN_BTN1, INPUT_PULLUP);
   pinMode(PIN_BTN2, INPUT_PULLUP);
-  analogReadResolution(12);
-  analogSetPinAttenuation(PIN_LDR, ADC_11db);   // đo được 0..~3.1 V
+  // Tắt log lỗi I2C của ESP-IDF: driver in thẳng ra UART (không qua g_serialMutex) mỗi lần
+  // thiết bị không trả lời. Task 2 / Task 6 tự báo lỗi bằng app_log() khi trạng thái đổi.
+  esp_log_level_set("i2c.master", ESP_LOG_NONE);
+  esp_log_level_set("i2c", ESP_LOG_NONE);
+
+  // Bus I2C dùng chung: khởi tạo 1 lần ở đây, trước khi Task 2 (BH1750) và Task 6 (OLED) chạy
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.setClock(400000);                        // BH1750 và SSD1306 đều chạy được 400 kHz
 
   // Tạo đối tượng kernel TRƯỚC khi tạo task dùng chúng
   g_btn2Sem    = xSemaphoreCreateBinary();                          // [K5] tạo ra ở trạng thái rỗng (0)
   g_lightMutex = xSemaphoreCreateMutex();                           // [K6] có priority inheritance
+  g_i2cMutex   = xSemaphoreCreateMutex();                           // [K6c]
   g_serialMutex = xSemaphoreCreateRecursiveMutex();                // [K6b]
   g_cmdQueue   = xQueueCreate(CMD_QUEUE_LEN, sizeof(CmdLine_t));    // [K8] copy theo giá trị
   g_statSem    = xSemaphoreCreateBinary();
@@ -108,7 +119,7 @@ void setup() {
   g_events     = xEventGroupCreate();                               // [K9]
   g_statTimer  = xTimerCreate("stat", pdMS_TO_TICKS(STAT_TIMER_MS), pdTRUE, nullptr, stat_timer_cb);  // [K11]
 
-  if (!g_btn2Sem || !g_lightMutex || !g_serialMutex || !g_cmdQueue || !g_statSem || !g_ctrlSet ||
+  if (!g_btn2Sem || !g_lightMutex || !g_i2cMutex || !g_serialMutex || !g_cmdQueue || !g_statSem || !g_ctrlSet ||
       !g_events || !g_statTimer) {
     Serial.println("[BOOT] LOI: khong du heap de tao doi tuong kernel");
     for (;;) delay(1000);

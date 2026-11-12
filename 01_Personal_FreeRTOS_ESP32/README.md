@@ -11,21 +11,23 @@ Báo cáo: [`../03_Reports/Report_Project_CaNhan_FreeRTOS_24119055.pdf`](../03_R
 |---|---|---|
 | LED1 / LED2 / LED3 (+220 Ω) | GPIO4 / 5 / 6 | GPIO19 / 18 / 5 |
 | BTN1 / BTN2 (nối GND, pull-up trong) | GPIO15 / 16 | GPIO4 / 13 |
-| Module cảm biến ánh sáng (AO) | GPIO1 (ADC1_CH0) | GPIO35 |
+| Cảm biến ánh sáng BH1750 (GY-302), I2C 0x23 | SDA 10, SCL 11 (chung bus OLED) | SDA 21, SCL 22 |
 | OLED SSD1306 I2C 0x3C | SDA 10, SCL 11 | SDA 21, SCL 22 |
 
-Kit + testboard dùng chung với nhóm (GV cho phép) nên chân giống mạch hiện có, nạp vào là chạy. Đổi chân trong `include/config.h`. Mạch chia áp quang trở tự ráp (LDR lên 3V3) thì đặt `LDR_INVERT 0`.
+Kit + testboard dùng chung với nhóm (GV cho phép). Đổi chân trong `include/config.h`.
+
+Nối BH1750 (GY-302): **VCC → 3V3, GND → GND, SCL → GPIO11, SDA → GPIO10, ADDR → GND** (hoặc để hở). ADDR nối 3V3 thì đổi `BH1750_ADDR` thành `0x5C`. OLED và BH1750 cắm song song trên cùng 2 dây SDA/SCL.
 
 ## Task
 
 | Task | Core | Prio | Chu kỳ / sự kiện | Kỹ thuật |
 |---|---|---|---|---|
 | T1 led1 | 1 | 2 | 100 ms (T = 200 ms) | vTaskDelayUntil, pvParameters |
-| T2 sensor | 0 | 2 | 500 ms | mutex, event group, xTaskNotify |
+| T2 sensor | 0 | 2 | 500 ms | BH1750 qua I2C, mutex bus I2C + mutex g_light, event group, xTaskNotify |
 | T3 btn1 | 1 | 3 | quét 10 ms | chống dội, vTaskDelay |
 | T4 btn2 | 1 | 3 | quét 10 ms | xSemaphoreGive (binary) |
 | T5 led3 | 1 | 4 | chờ semaphore | xSemaphoreTake, critical section |
-| T6 oled | 0 | 1 | 500 ms | mutex, critical section, xEventGroupWaitBits |
+| T6 oled | 0 | 1 | 500 ms | mutex g_light + mutex bus I2C, critical section, xEventGroupWaitBits |
 | T7 control | 0 | 2 | chờ queue set | queue lệnh + queue set, suspend/resume/prio, stack monitor |
 | T8 alarm | 0 | 3 | chờ notification | xTaskNotifyWait |
 | timer | daemon | – | 10 s | software timer → give semaphore cho Task 7 |
@@ -36,7 +38,7 @@ Mọi task gọi `xEventGroupSync` ở đầu nên cùng xuất phát. Log: mỗ
 
 1. VS Code + PlatformIO, mở thư mục này, chọn env `esp32s3`. Build ✓ → Upload → → Serial Monitor 115200.
 2. Gõ lệnh trong Serial Monitor: `help`, `stat`, `light`, `give`, `s 1` / `r 1` (dừng / chạy lại LED1), `p 6 2` (đổi priority Task 6).
-3. Không có kit: F1 → *Wokwi: Start Simulator* (`diagram.json`).
+3. Không có kit: F1 → *Wokwi: Start Simulator* (`diagram.json`). Wokwi không có BH1750 nên OLED sẽ hiện "loi cam bien"; các phần khác chạy bình thường.
 4. Nạp sẵn không cần build: `prebuilt/firmware_esp32s3_factory.bin` ở địa chỉ 0x0 (ESP Web Flasher / esptool).
 
 Ghi chú:
@@ -46,7 +48,7 @@ Ghi chú:
 
 ## Chạy giả lập QEMU (đã dùng để kiểm thử)
 
-Env `qemu_esp32` (QEMU không có ADC nên Task 2 dùng tín hiệu giả `SIM_NO_ADC`; không nạp bản này lên kit):
+Env `qemu_esp32` (QEMU không có BH1750 nên Task 2 dùng ánh sáng giả `SIM_NO_SENSOR`; không nạp bản này lên kit):
 
 ```bash
 pio run -e qemu_esp32
@@ -54,7 +56,7 @@ esptool.py --chip esp32 merge-bin -o flash.bin --fill-flash-size 4MB 0x1000 boot
 qemu-system-xtensa -machine esp32 -icount 3 -display none -serial stdio -drive file=flash.bin,if=mtd,format=raw
 ```
 
-Kết quả: [`docs/qemu_log.txt`](docs/qemu_log.txt). LED3 sáng đúng 3000 ms; 3 lần `give` liên tiếp cho 2 lượt sáng (binary semaphore giữ tối đa 1 token); báo tối ở 22 %, hết tối ở 37 %; thống kê in đúng mỗi 10 s qua queue set; không log nào bị bỏ.
+Kết quả: [`docs/qemu_log.txt`](docs/qemu_log.txt). LED3 sáng đúng 3000 ms; 3 lần `give` liên tiếp cho 2 lượt sáng (binary semaphore giữ tối đa 1 token); báo tối dưới 20 lx, hết tối trên 40 lx; thống kê in đúng mỗi 10 s qua queue set; không log nào bị bỏ.
 
 ## Kiểm thử trên kit (điền khi chạy)
 
@@ -64,6 +66,7 @@ Kết quả: [`docs/qemu_log.txt`](docs/qemu_log.txt). LED3 sáng đúng 3000 ms
 | 2 | Nhấn BTN1 | LED2 đảo, OLED đổi ON/OFF | |
 | 3 | Nhấn BTN2 | LED3 sáng 3 s, OLED đếm 3.0 → 0.0 → OFF | |
 | 4 | Nhấn BTN2 3 lần nhanh | LED3 sáng 2 lượt; log "da co token" | |
-| 5 | Che quang trở | % giảm; dưới 25 % OLED hiện [TOI] | |
+| 5 | Che tay lên BH1750 | lx giảm; dưới 20 lx OLED hiện [TOI] | |
+| 5b | Rút rồi cắm lại dây SDA của BH1750 | OLED hiện "loi cam bien", cắm lại tự đọc tiếp | |
 | 6 | `s 1` rồi `r 1` | LED1 dừng rồi nháy lại | |
 | 7 | `stat` sau 10 phút | stack còn dư, log bỏ = 0 | |

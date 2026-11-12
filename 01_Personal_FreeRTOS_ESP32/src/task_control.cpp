@@ -128,8 +128,9 @@ static void print_light() {
   }
   l = g_light;
   xSemaphoreGive(g_lightMutex);
-  app_log("g_light: raw=%u %lumV %u%% lan=%lu toi=%d", l.raw, (unsigned long)l.mv, l.lightPct,
-          (unsigned long)l.count, (int)g_dark);
+  app_log("g_light: %s %lu lx raw=%u doc=%lu loi=%lu toi=%d", l.ok ? "OK" : "LOI",
+          (unsigned long)(l.lux + 0.5f), l.raw, (unsigned long)l.count, (unsigned long)l.errors,
+          (int)g_dark);
 }
 
 static void handle_cmd(const char *line) {
