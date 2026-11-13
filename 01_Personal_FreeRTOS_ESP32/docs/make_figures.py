@@ -46,11 +46,10 @@ def fig_hardware():
     for name, pin, y in [("BTN1 → GND", "GPIO15 (pull-up)", 2.2), ("BTN2 → GND", "GPIO16 (pull-up)", 1.3)]:
         box(ax, 0.2, y - 0.3, 2.3, 0.6, name, "#e9f7f1", AQUA, fs=9)
         arrow(ax, (2.5, y), (3.6, y), AQUA, pin)
-    box(ax, 7.5, 3.5, 2.3, 1.0, "BH1750 (GY-302)\nánh sáng, I2C 0x23", "#f1eefc", VIOLET, fs=9)
-    ax.plot([7.0, 7.0], [2.0, 4.0], color=VIOLET, lw=1.3)
-    ax.plot([7.0, 7.5], [4.0, 4.0], color=VIOLET, lw=1.3)
-    ax.text(7.05, 3.0, "bus I2C\nchung", fontsize=8, color=INK2)
-    box(ax, 7.5, 1.6, 2.3, 0.9, "OLED SSD1306\n128×64, I2C 0x3C", "#f1eefc", VIOLET, fs=9)
+    box(ax, 7.5, 3.9, 2.3, 0.8, "Module quang trở\n(AO)", "#f1eefc", VIOLET, fs=9)
+    arrow(ax, (7.5, 4.3), (6.4, 4.3), VIOLET)
+    ax.text(6.95, 3.95, "GPIO1 / ADC1", ha="center", fontsize=8, color=INK2)
+    box(ax, 7.5, 1.6, 2.3, 1.0, "OLED SSD1306\n128×64, I2C 0x3C", "#f1eefc", VIOLET, fs=9)
     arrow(ax, (6.4, 2.25), (7.5, 2.25), VIOLET, "SDA GPIO10")
     arrow(ax, (6.4, 1.8), (7.5, 1.8), VIOLET, "SCL GPIO11")
     box(ax, 3.4, 0.1, 3.2, 0.6, "USB-UART → PC (Serial 115200)", "#f3f3f1", INK2, fs=9)
@@ -75,7 +74,7 @@ def fig_software():
     task("t3", 0.4, 4.3, "T3 btn1 · prio 3\nquét 10 ms → đảo LED2", BLUE)
     task("t4", 0.4, 3.0, "T4 btn2 · prio 3\nquét 10 ms → give sem", BLUE)
     task("t5", 0.4, 1.7, "T5 led3 · prio 4\ntake sem → LED3 3 s", BLUE)
-    task("t2", 7.9, 5.6, "T2 sensor · prio 2\nBH1750 500 ms → g_light", ORANGE)
+    task("t2", 7.9, 5.6, "T2 sensor · prio 2\nADC 500 ms → g_light", ORANGE)
     task("t8", 7.9, 4.3, "T8 alarm · prio 3\nchờ notification", ORANGE)
     task("t6", 7.9, 3.0, "T6 oled · prio 1\nvẽ OLED 500 ms", ORANGE)
     task("t7", 7.9, 1.7, "T7 control · prio 2\nqueue set: lệnh + timer", ORANGE)
@@ -102,7 +101,7 @@ def fig_software():
     arrow(ax, (7.3, 0.85), (7.9, 1.85), VIOLET)
     ax.text(7.45, 1.45, "chờ", fontsize=8, color=INK2)
     arrow(ax, (7.9, 0.75), (7.3, 0.75), INK2)
-    ax.text(0.4, 0.4, "UART RX → queue lệnh → set\nSerial: recursive mutex\nBus I2C (T2 + T6): g_i2cMutex", fontsize=8, color=INK2)
+    ax.text(0.4, 0.45, "UART RX → queue lệnh → set\nSerial: recursive mutex,\nmọi task tự in", fontsize=8, color=INK2)
     arrow(ax, (9.7, 5.6), (9.7, 5.15), ORANGE)
     ax.text(9.85, 5.33, "xTaskNotify", fontsize=8, color=INK2)
     ax.set_title("Hình 2. Kiến trúc phần mềm: 8 task, 2 lõi và đối tượng đồng bộ", fontsize=12, pad=4)
@@ -166,8 +165,8 @@ def fig_timeline():
 # ---------------- Hình 5: stack còn dư ----------------
 def fig_stack():
     names = ["T1_led1", "T2_sensor", "T3_btn1", "T4_btn2", "T5_led3", "T6_oled", "T7_control", "T8_alarm"]
-    size = [3072, 4096, 3072, 3072, 3072, 4096, 4096, 3072]
-    free = [2480, 2840, 2496, 2496, 1480, 2452, 2416, 1468]
+    size = [3072, 3072, 3072, 3072, 3072, 4096, 4096, 3072]
+    free = [2484, 2476, 2500, 2492, 1476, 2472, 2428, 1464]
     used = [s - f for s, f in zip(size, free)]
     fig, ax = plt.subplots(figsize=(8, 3.6))
     y = range(len(names))[::-1]

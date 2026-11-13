@@ -13,7 +13,8 @@
 #define PIN_LED3        6   // Task 5 - sáng 3 s khi nhận semaphore
 #define PIN_BTN1       15   // nút nối GND, INPUT_PULLUP
 #define PIN_BTN2       16
-#define PIN_I2C_SDA    10   // bus I2C chung: OLED SSD1306 + BH1750. Không dùng GPIO8: trên kit này GPIO8 bị kéo xuống GND
+#define PIN_LDR         1   // AO module cảm biến -> ADC1_CH0
+#define PIN_I2C_SDA    10   // OLED SSD1306. Không dùng GPIO8: trên kit này GPIO8 bị kéo xuống GND
 #define PIN_I2C_SCL    11
 #else
 // ESP32 DevKit thường (WROOM-32)
@@ -22,6 +23,7 @@
 #define PIN_LED3        5
 #define PIN_BTN1        4
 #define PIN_BTN2       13
+#define PIN_LDR        35   // ADC1_CH7, chân chỉ vào
 #define PIN_I2C_SDA    21
 #define PIN_I2C_SCL    22
 #endif
@@ -30,9 +32,9 @@
 #define OLED_H         64
 #define OLED_ADDR    0x3C
 
-// Cảm biến ánh sáng BH1750 (module GY-302), I2C chung bus với OLED
-#define BH1750_ADDR  0x23   // chân ADDR nối GND hoặc để hở; ADDR lên 3V3 thì đổi thành 0x5C
-#define LUX_BAR_MAX  1000   // thanh mức trên OLED đầy ở 1000 lx
+// Module quang trở thường cho AO CAO khi TỐI -> đảo để 100% = sáng nhất.
+// Nếu dùng mạch chia áp tự ráp (LDR lên 3V3, điện trở xuống GND) thì đặt 0.
+#define LDR_INVERT      1
 
 // ============ Thời gian (ms) ============
 #define LED1_PERIOD_MS      200   // Task 1: chu kỳ đầy đủ (100 ms sáng + 100 ms tắt)
@@ -42,11 +44,11 @@
 #define LED3_ON_MS         3000   // Task 5
 #define OLED_PERIOD_MS      500   // Task 6
 #define STAT_TIMER_MS     10000   // software timer in thống kê hệ thống
-#define I2C_WAIT_MS          50   // chờ mutex bus I2C tối đa; quá thì bỏ lượt, task không treo
+#define ADC_SAMPLES           8   // Task 2 lấy trung bình 8 mẫu
 
 // Ngưỡng báo tối (Task 8), có trễ (hysteresis) để không bật/tắt liên tục quanh ngưỡng
-#define DARK_ON_LUX          20   // dưới 20 lx -> tối (phòng tắt đèn, che tay lên cảm biến)
-#define DARK_OFF_LUX         40   // trên 40 lx -> hết tối
+#define DARK_ON_PCT          25
+#define DARK_OFF_PCT         35
 
 // ============ Priority (số lớn = ưu tiên cao) ============
 #define PRIO_T1_LED1      2
@@ -60,13 +62,13 @@
 
 // ============ Stack (đơn vị BYTE trên ESP-IDF) ============
 #define STK_SMALL      3072   // 2048 chỉ còn ~650 byte dư ở T5/T8 (đo bằng lệnh stat) -> tăng lên
-#define STK_SENSOR     4096   // Wire + BH1750: 3072 chỉ còn ~430 B dư (đo bằng lệnh stat)
+#define STK_SENSOR     3072
 #define STK_OLED       4096
 #define STK_CONTROL    4096
 
 // ============ Core (ESP32 2 lõi) ============
 #define CORE_IO   1   // LED, nút: cần đáp ứng nhanh
-#define CORE_BG   0   // cảm biến, OLED, điều khiển: tác vụ nền (cả 2 task I2C cùng lõi)
+#define CORE_BG   0   // cảm biến, OLED, điều khiển: tác vụ nền
 
 // ============ Log + lệnh ============
 #define LOG_TEXT_LEN     64   // độ dài tối đa 1 dòng log

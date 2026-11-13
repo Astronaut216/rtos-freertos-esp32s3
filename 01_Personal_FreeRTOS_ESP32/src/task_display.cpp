@@ -1,7 +1,7 @@
 /*
  * task_display.cpp - Task 6: hiển thị lên OLED SSD1306 mỗi 500 ms
  *   - trạng thái LED2 (On/Off)
- *   - cảm biến ánh sáng (lx, thanh mức)
+ *   - cảm biến ánh sáng (%, mV)
  *   - LED3: đếm ngược thời gian còn sáng -> "OFF"
  */
 #include "app.h"
@@ -11,19 +11,16 @@
 
 static Adafruit_SSD1306 s_oled(OLED_W, OLED_H, &Wire, -1);
 
-// Dò địa chỉ 0x3C / 0x3D rồi khởi tạo. Bus I2C dùng chung với BH1750 của Task 2 -> giữ g_i2cMutex [K6c].
+// Dò địa chỉ 0x3C / 0x3D rồi khởi tạo. Chỉ Task 6 dùng bus I2C nên không cần mutex cho Wire.
 static bool oled_begin() {
   static const uint8_t cand[] = {OLED_ADDR, 0x3D};
   uint8_t addr = 0;
-  bool ok = false;
-  if (xSemaphoreTake(g_i2cMutex, pdMS_TO_TICKS(I2C_WAIT_MS)) != pdTRUE) return false;
   for (uint8_t a : cand) {
     Wire.beginTransmission(a);
     if (Wire.endTransmission() == 0) { addr = a; break; }
   }
-  if (addr) ok = s_oled.begin(SSD1306_SWITCHCAPVCC, addr, true, false);
-  xSemaphoreGive(g_i2cMutex);
-  if (!ok) return false;
+  if (addr == 0) return false;
+  if (!s_oled.begin(SSD1306_SWITCHCAPVCC, addr, true, false)) return false;
   s_oled.setTextColor(SSD1306_WHITE);
   s_oled.setTextWrap(false);
   app_log("T6 OLED OK tai 0x%02X", addr);
@@ -31,7 +28,9 @@ static bool oled_begin() {
 }
 
 void task6_oled(void *pv) {
-  bool oledOk = oled_begin();       // Wire.begin() đã gọi trong setup() vì bus dùng chung
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.setClock(400000);
+  bool oledOk = oled_begin();
   if (oledOk) xEventGroupSetBits(g_events, EV_OLED_OK);
   else app_log("T6 khong thay OLED (SDA=%d SCL=%d), se thu lai moi 5s", PIN_I2C_SDA, PIN_I2C_SCL);
 
@@ -63,7 +62,7 @@ void task6_oled(void *pv) {
       if (remainMs < 0) remainMs = 0;
     }
 
-    // --- 2. Vẽ vào bộ đệm RAM của thư viện (chưa đụng I2C, không giữ khoá nào) ---
+    // --- 2. Vẽ (ngoài vùng khoá: I2C chậm ~25 ms, không giữ mutex lúc này) ---
     if (oledOk) {
       s_oled.clearDisplay();
       s_oled.setTextSize(1);
@@ -77,13 +76,9 @@ void task6_oled(void *pv) {
       s_oled.print(led2 ? "ON" : "OFF");
 
       s_oled.setCursor(0, 24);
-      if (light.ok) {
-        s_oled.printf("Light: %5lu lx", (unsigned long)(light.lux + 0.5f));
-        s_oled.drawRect(0, 34, OLED_W, 6, SSD1306_WHITE);               // thanh ánh sáng
-        s_oled.fillRect(1, 35, (OLED_W - 2) * light.barPct / 100, 4, SSD1306_WHITE);
-      } else {
-        s_oled.print("Light: loi cam bien");
-      }
+      s_oled.printf("Light: %3u%%  %4lumV", light.lightPct, (unsigned long)light.mv);
+      s_oled.drawRect(0, 34, OLED_W, 6, SSD1306_WHITE);                 // thanh ánh sáng
+      s_oled.fillRect(1, 35, (OLED_W - 2) * light.lightPct / 100, 4, SSD1306_WHITE);
 
       s_oled.setCursor(0, 44);
       if (led3.on) {
@@ -97,12 +92,7 @@ void task6_oled(void *pv) {
         s_oled.setCursor(92, 13);
         s_oled.print("[TOI]");
       }
-      // --- 3. Gửi bộ đệm ra màn hình qua I2C (~25 ms ở 400 kHz) dưới mutex bus [K6c] ---
-      // Task 2 muốn đọc BH1750 lúc này sẽ chờ (tối đa I2C_WAIT_MS), không chen vào giữa khung hình.
-      if (xSemaphoreTake(g_i2cMutex, pdMS_TO_TICKS(I2C_WAIT_MS)) == pdTRUE) {
-        s_oled.display();
-        xSemaphoreGive(g_i2cMutex);
-      }
+      s_oled.display();
     } else if (++retry >= 5000 / OLED_PERIOD_MS) {
       // Mất màn hình (lỏng dây...) -> thử lại định kỳ, hệ thống vẫn chạy bình thường
       retry = 0;

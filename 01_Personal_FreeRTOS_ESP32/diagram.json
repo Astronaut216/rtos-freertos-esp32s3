@@ -93,6 +93,13 @@
       }
     },
     {
+      "type": "wokwi-photoresistor-sensor",
+      "id": "ldr",
+      "top": -160,
+      "left": -230,
+      "attrs": {}
+    },
+    {
       "type": "board-ssd1306",
       "id": "oled",
       "top": 220,
@@ -191,6 +198,24 @@
       "btn2:2.l",
       "esp:GND.2",
       "black",
+      []
+    ],
+    [
+      "ldr:VCC",
+      "esp:3V3.1",
+      "red",
+      []
+    ],
+    [
+      "ldr:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "ldr:AO",
+      "esp:1",
+      "purple",
       []
     ],
     [
